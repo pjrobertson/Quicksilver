@@ -49,7 +49,8 @@ extern QSExecutor *QSExec; // Shared Instance
 - (void)setAction:(QSAction *)action isEnabled:(BOOL)flag;
 - (BOOL)actionIsMenuEnabled:(QSAction*)action;
 - (void)setAction:(QSAction *)action isMenuEnabled:(BOOL)flag;
-
+- (void)addActionsToActionsArray:(QSAction *)action;
+- (void)removeActionsFromActionsArray:(QSAction *)action;
 - (void)orderActions:(NSArray *)actions aboveActions:(NSArray *)lowerActions;
 - (void)orderActions:(NSArray *)actions belowActions:(NSArray *)higherActions;
 - (void)updateRanks;

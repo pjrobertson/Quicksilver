@@ -171,7 +171,16 @@ static BOOL gModifiersAreIgnored;
 }
 
 - (BOOL)enabled { return [QSExec actionIsEnabled:self];  }
-- (void)setEnabled:(BOOL)flag { [QSExec setAction:self isEnabled:flag]; }
+- (void)setEnabled:(BOOL)flag { 
+	[QSExec setAction:self isEnabled:flag];
+	if(flag) {
+		[QSExec addActionsToActionsArray:self];
+	}
+	else {
+		[QSExec removeActionsFromActionsArray:self];
+	}
+
+}
 
 - (BOOL)defaultEnabled { 
     NSNumber *n = [[self actionDict] objectForKey:kActionEnabled];

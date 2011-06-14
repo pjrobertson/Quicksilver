@@ -207,6 +207,13 @@ QSExecutor *QSExec = nil;
 	} else {
 		[action _setRank:index];
 	}
+	if (![action enabled]) {
+	[self addActionsToActionsArray:action];
+	}
+}
+
+- (void)addActionsToActionsArray:(QSAction *)action {
+	
 	NSDictionary *actionDict = [action objectForType:QSActionType];
 	NSArray *directTypes = [actionDict objectForKey:@"directTypes"];
 	if (![directTypes count]) directTypes = [NSArray arrayWithObject:@"*"];
@@ -222,6 +229,24 @@ QSExecutor *QSExec = nil;
 		}
 	}
 }
+- (void)removeActionsFromActionsArray:(QSAction *)action {
+	
+	NSDictionary *actionDict = [action objectForType:QSActionType];
+	NSArray *directTypes = [actionDict objectForKey:@"directTypes"];
+	if (![directTypes count]) directTypes = [NSArray arrayWithObject:@"*"];
+	for (NSString *type in directTypes) {
+        [[self actionsArrayForType:type] removeObject:action];
+    }
+    
+	if ([directTypes containsObject:QSFilePathType]) {
+		directTypes = [actionDict objectForKey:@"directFileTypes"];
+		if (![directTypes count]) directTypes = [NSArray arrayWithObject:@"*"];
+		for (NSString *type in directTypes) {
+			[[self actionsArrayForFileType:type] removeObject:action];
+		}
+	}
+}
+	
 
 - (void)updateRanks {
 	int i;
@@ -344,6 +369,7 @@ QSExecutor *QSExec = nil;
 
 - (NSArray *)validActionsForDirectObject:(QSObject *)dObject indirectObject:(QSObject *)iObject {
 	if (!dObject) return nil;
+	NSDate *startDate = [NSDate date];
 	NSMutableArray *actions = [NSMutableArray arrayWithCapacity:1];
 	// unsigned i;
 	id aObject = nil;
@@ -370,9 +396,9 @@ QSExecutor *QSExec = nil;
 	//									:
 	NSArray *newActions = [self actionsForTypes:[dObject types] fileTypes:(fileType ? [NSArray arrayWithObject:fileType] : nil)];
 	BOOL isValid;
-    
+//    NSLog(@"List of Actions: %@\n\n",newActions);
     for (QSAction *thisAction in newActions) {
-        if (![thisAction enabled]) continue;
+//		NSLog(@"This Action: %@ is Enabled",[thisAction identifier]);
 		validSourceActions = nil;
 		NSDictionary *actionDict = [thisAction objectForType:QSActionType];
 		isValid = ![[actionDict objectForKey:kActionValidatesObjects] boolValue];
@@ -407,6 +433,7 @@ QSExecutor *QSExec = nil;
 		NSLog(@"unable to find actions for %@", actionIdentifiers);
 		NSLog(@"types %@ %@", [NSSet setWithArray:[dObject types]], fileType);
 	}
+	NSLog(@"Took %dµs to sort actions for dObject: %@",(int)(-[startDate timeIntervalSinceNow] *1000000),[dObject name]);
 	return [[validActions mutableCopy] autorelease];
 }
 
