@@ -1441,8 +1441,8 @@
 		E1E5FB7707B20DD10044D6EF /* QSCore.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = QSCore.h; sourceTree = "<group>"; };
 		E1E5FB7907B20DD10044D6EF /* QSense.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = QSense.h; sourceTree = "<group>"; };
 		E1E5FB7A07B20DD10044D6EF /* QSense.m */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.objc; path = QSense.m; sourceTree = "<group>"; };
-		E1E5FB7B07B20DD10044D6EF /* QSExecutor.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = QSExecutor.h; sourceTree = "<group>"; };
-		E1E5FB7C07B20DD10044D6EF /* QSExecutor.m */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.objc; path = QSExecutor.m; sourceTree = "<group>"; wrapsLines = 1; };
+		E1E5FB7B07B20DD10044D6EF /* QSExecutor.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = QSExecutor.h; sourceTree = "<group>"; };
+		E1E5FB7C07B20DD10044D6EF /* QSExecutor.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = QSExecutor.m; sourceTree = "<group>"; wrapsLines = 1; };
 		E1E5FB7D07B20DD10044D6EF /* QSGlobalSelectionProvider.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = QSGlobalSelectionProvider.h; sourceTree = "<group>"; };
 		E1E5FB7E07B20DD10044D6EF /* QSGlobalSelectionProvider.m */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.objc; path = QSGlobalSelectionProvider.m; sourceTree = "<group>"; };
 		E1E5FB7F07B20DD10044D6EF /* QSIconLoader.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = QSIconLoader.h; sourceTree = "<group>"; };
