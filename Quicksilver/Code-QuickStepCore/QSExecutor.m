@@ -62,27 +62,31 @@ QSExecutor *QSExec = nil;
 	 	directObjectFileTypes = [[NSMutableDictionary alloc] initWithCapacity:1];
 
 		NSDictionary *actionsPrefs = [[NSDictionary alloc] initWithContentsOfFile:pQSActionsLocation];
-		NSDictionary *oldActionsPrefs = nil;
-		NSDictionary *actionActivation = nil;
+		BOOL upgrading = NO;
 		
 		// Upgrading from an older QS version? New QS Installation?
 		if (!actionsPrefs) {
-			oldActionsPrefs = [[NSDictionary  alloc] initWithContentsOfFile:pQSOldActionsLocation];
+			NSDictionary *oldActionsPrefs = [[NSDictionary  alloc] initWithContentsOfFile:pQSOldActionsLocation];
 			if (!oldActionsPrefs) {
 				// New QS installation
 				actionsPrefs = [NSDictionary dictionary];
 			}
 			else {
+				upgrading = YES;
 				// Upgrade the old school actions prefs
 					NSLog(@"Creating / Upgrading the Actions .plist");
 				actionsPrefs = [oldActionsPrefs copy];
+				[oldActionsPrefs release];
+				
 					// Alter the format. We've moving from an NSDict with 'enabled' bool 
 					// keys to 2 NSSets defining the enabled/disabled actions
-				actionActivation = [actionsPrefs objectForKey:@"actionActivation"];
+				
+				// main actions first
+				NSDictionary *oldActionActivation = [actionsPrefs objectForKey:@"actionActivation"];
 				NSMutableArray *tempEnabledActions = [[NSMutableArray alloc] init];
 				NSMutableArray *tempDisabledActions = [[NSMutableArray alloc] init];
-				for(NSString * key in actionActivation) {
-						BOOL enabled = [[actionActivation objectForKey:key] boolValue];
+				for(NSString * key in oldActionActivation) {
+						BOOL enabled = [[oldActionActivation objectForKey:key] boolValue];
 						if (enabled == TRUE) {
 							[tempEnabledActions addObject:key];
 						}
@@ -94,22 +98,36 @@ QSExecutor *QSExec = nil;
 				disabledActions = [tempDisabledActions mutableCopy];
 				[tempEnabledActions release];
 				[tempDisabledActions release];
-				actionActivation = [NSDictionary dictionaryWithObjects: [NSArray arrayWithObjects:enabledActions, disabledActions,nil] forKeys: [NSArray arrayWithObjects:@"enabledActions",@"disabledActions",nil] ];
+				
+				// menu actions next
+				NSDictionary *oldActionMenuActivation = [actionsPrefs objectForKey:@"actionMenuActivation"];
+				NSMutableArray *tempEnabledMenuActions = [[NSMutableArray alloc] init];
+				NSMutableArray *tempDisabledMenuActions = [[NSMutableArray alloc] init];
+				for(NSString * key in oldActionMenuActivation) {
+					BOOL enabled = [[oldActionMenuActivation objectForKey:key] boolValue];
+					if (enabled == TRUE) {
+						[tempEnabledMenuActions addObject:key];
+					}
+					else {
+						[tempDisabledMenuActions addObject:key];
+					}
+				}
+				enabledMenuActions = [tempEnabledMenuActions mutableCopy];
+				disabledMenuActions = [tempDisabledMenuActions mutableCopy];
+				[tempEnabledMenuActions release];
+				[tempDisabledMenuActions release];
 			}
 		}
 		actionPrecedence = [[actionsPrefs objectForKey:@"actionPrecedence"] mutableCopy];
-		actionRanking = [[actionsPrefs objectForKey:@"actionRanking"] mutableCopy];
-		// Actions that appear in the 'actions menu' (use 'show action menu' action to see it)
-		actionMenuActivation = [[actionsPrefs objectForKey:@"actionMenuActivation"] mutableCopy];
+		actionRanking = [[actionsPrefs objectForKey:@"actionRanking"] mutableCopy];		
 		
-		
-		// actionActivation: Actions that show up in the 2nd pane.
 		// If we haven't gone through the upgrade process, we need to get this from the .plist
-		if (!actionActivation) {
-			actionActivation = [actionsPrefs objectForKey:@"actionActivation"];
+		if (!upgrading) {
 			// set the enabled and disabled actions
-			enabledActions = [[actionActivation objectForKey:@"enabledActions"] mutableCopy];
-			disabledActions = [[actionActivation objectForKey:@"disabledActions"]mutableCopy];
+			enabledActions = [[actionsPrefs objectForKey:@"enabledActions"] mutableCopy];
+			disabledActions = [[actionsPrefs objectForKey:@"disabledActions"]mutableCopy];
+			enabledMenuActions = [[actionsPrefs objectForKey:@"enabledMenuActions"]mutableCopy];
+			disabledMenuActions = [[actionsPrefs objectForKey:@"disabledMenuActions"]mutableCopy];
 		}
 		
 		actionIndirects = [[actionsPrefs objectForKey:@"actionIndirects"] mutableCopy];
@@ -121,18 +139,26 @@ QSExecutor *QSExec = nil;
 			actionPrecedence = [[NSMutableDictionary alloc] init];
 		if (!actionRanking)
 			actionRanking = [[NSMutableArray alloc] init];
-		if (!actionMenuActivation)
-			actionMenuActivation = [[NSMutableDictionary alloc] init];
+		if (!enabledActions)
+			enabledActions = [[NSMutableSet alloc] init];
+		if (!disabledActions) {
+			disabledActions = [[NSMutableSet alloc] init];
+		}
+		if (!enabledMenuActions) {
+			enabledMenuActions = [[NSMutableSet alloc] init];
+		}
+		if (!disabledMenuActions) {
+			disabledMenuActions = [[NSMutableSet alloc] init];
+		}
 		if (!actionIndirects)
 			actionIndirects = [[NSMutableDictionary alloc] init];
 		if (!actionNames)
 			actionNames = [[NSMutableDictionary alloc] init];
 		
 		
-		if (oldActionsPrefs) {
+		if (upgrading) {
 			NSLog(@"Writing the new Actions preferences to Actionsv2.plist");
 			[self writeActionsInfoNow];
-			[oldActionsPrefs release];
 		}
 		//[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(writeCatalog:) name:QSCatalogEntryChanged object:nil];
 #if 0
@@ -154,7 +180,8 @@ QSExecutor *QSExec = nil;
 	[actionPrecedence release];
 	[enabledActions release];
 	[disabledActions release];
-	[actionMenuActivation release];
+	[enabledMenuActions release];
+	[disabledMenuActions release];
 	[actionIndirects release];
 	[actionNames release];	
 	[super dealloc];
@@ -235,15 +262,10 @@ QSExecutor *QSExec = nil;
 
 	// action menu actions
     
-    BOOL activation = NO;
-    NSNumber *act = [actionMenuActivation objectForKey:ident];
-	if (act)
-        activation = [act boolValue];
-    else
-        activation = [action defaultEnabled];
-	[action setMenuEnabled:activation];    
-
 	
+	if(![enabledMenuActions containsObject:ident] && ![disabledMenuActions containsObject:ident]) {
+		[action setMenuEnabled:[action defaultEnabled]];
+	}
 		
 	int index = [actionRanking indexOfObject:ident];
 
@@ -480,41 +502,44 @@ QSExecutor *QSExec = nil;
 	return [actionObject validIndirectObjectsForAction:action directObject:dObject];
 }
 
--(void) addActionToEnabledActions:(QSAction *)action {
+-(void) addAction:(QSAction *)action to:(NSMutableSet *)add removeFrom:(NSMutableSet *)remove {
 	NSString *ident = [action identifier];
-	[enabledActions addObject:ident];
-	[disabledActions removeObject:ident];
-}
-
--(void) removeActionFromEnabledActions:(QSAction *)action {
-	NSString *ident = [action identifier];
-	[disabledActions addObject:ident];
-	[enabledActions removeObject:ident];
+	[add addObject:ident];
+	[remove removeObject:ident];
 }
 
 
 - (BOOL)actionIsEnabled:(QSAction*)action {
     return [enabledActions containsObject:[action identifier]];;
 }
-- (void)setAction:(QSAction *)action isEnabled:(BOOL)enabled {
+- (void)setAction:(QSAction *)action isEnabled:(BOOL)flag {
 
-	if (enabled) {
-		[self addActionToEnabledActions:action];
+	if (flag) {
+		//enable
+		[self addAction:action to:enabledActions removeFrom:disabledActions];
 	}
 	else {
-		[self removeActionFromEnabledActions:action];
+		//disable
+		[self addAction:action to:disabledActions removeFrom:enabledActions];
 	}
 
 	[self writeActionsInfo];
 }
 
 - (BOOL)actionIsMenuEnabled:(QSAction*)action {
-    id val = [actionMenuActivation objectForKey:[action identifier]];
-    return (val ? [val boolValue] : YES);
+	return [enabledMenuActions containsObject:[action identifier]];;
 }
 - (void)setAction:(QSAction *)action isMenuEnabled:(BOOL)flag {
-// 	if (VERBOSE) NSLog(@"set action %@ is menu enabled %d", action, flag);
-	[actionMenuActivation setObject:[NSNumber numberWithBool:flag] forKey:[action identifier]];
+	
+	if (flag) {
+		// enable
+		[self addAction:action to:enabledMenuActions removeFrom:disabledMenuActions];
+	}
+	else {
+		// disable
+		[self addAction:action to:disabledMenuActions removeFrom:enabledMenuActions];
+	}
+	
 	[self writeActionsInfo];
 }
 
@@ -569,8 +594,10 @@ QSExecutor *QSExec = nil;
 	NSMutableDictionary *dict = [[NSMutableDictionary alloc] init];
 	[dict setObject:actionPrecedence forKey:@"actionPrecedence"];
 	[dict setObject:actionRanking forKey:@"actionRanking"];
-	[dict setObject:[NSDictionary dictionaryWithObjectsAndKeys:enabledActions, @"enabledActions", disabledActions, @"disabledActions",nil] forKey:@"actionActivation"];
-	[dict setObject:actionMenuActivation forKey:@"actionMenuActivation"];
+	[dict setObject:enabledActions forKey:@"enabledActions"];
+	[dict setObject:disabledActions forKey:@"disabledActions"];
+	[dict setObject:enabledMenuActions forKey:@"enabledMenuActions"];
+	[dict setObject:disabledMenuActions forKey:@"disabledMenuActions"];
 	[dict setObject:actionIndirects forKey:@"actionIndirects"];
 	[dict setObject:actionNames forKey:@"actionNames"];
 	[dict writeToFile:pQSActionsLocation atomically:YES];

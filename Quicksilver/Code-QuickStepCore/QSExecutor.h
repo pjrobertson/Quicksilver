@@ -23,12 +23,17 @@ extern QSExecutor *QSExec; // Shared Instance
 
 	NSMutableArray *actionRanking;
 	NSMutableDictionary *actionPrecedence;
-	NSMutableDictionary *actionMenuActivation;
 	NSMutableDictionary *actionIndirects;
 	NSMutableDictionary *actionNames;
 	
+	// NSStest for oranising enabled and disabled actions (set in the actions prefs)
 	NSMutableSet *enabledActions;
 	NSMutableSet *disabledActions;
+	
+	// NSSets for organising enabled and disabled menu actions. Use the 'show action menu' action
+	// to see these actions (pointless?)
+	NSMutableSet *enabledMenuActions;
+	NSMutableSet *disabledMenuActions;
  }
 + (id)sharedInstance;
 
