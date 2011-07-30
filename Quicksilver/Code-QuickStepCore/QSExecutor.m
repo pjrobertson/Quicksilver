@@ -309,9 +309,14 @@ QSExecutor *QSExec = nil;
 }
 
 - (NSArray *)rankedActionsForDirectObject:(QSObject *)dObject indirectObject:(QSObject *)iObject shouldBypass:(BOOL)bypass {
+	if (!dObject) {
+		return nil;
+	}
+	
 	NSArray *actions = nil;
-	if ([[dObject handler] respondsToSelector:@selector(actionsForDirectObject:indirectObject:)])
+	if ([[dObject handler] respondsToSelector:@selector(actionsForDirectObject:indirectObject:)]) {
 		actions = (NSMutableArray *)[[dObject handler] actionsForDirectObject:dObject indirectObject:iObject];
+	}
     
 	BOOL bypassValidation =
 		(bypass && [dObject isKindOfClass:[QSProxyObject class]] && [(QSProxyObject *)dObject bypassValidation]);
@@ -320,14 +325,17 @@ QSExecutor *QSExec = nil;
 		//NSLog(@"bypass? %@ %@", dObject, NSStringFromClass([dObject class]) );
 		actions = [[[actionIdentifiers allValues] mutableCopy] autorelease];
 	}
-	if (!actions)
+	
+	if (!actions) {
 		actions = [self validActionsForDirectObject:dObject indirectObject:iObject];
+	}
 
 	NSString *preferredActionID = [dObject objectForMeta:kQSObjectDefaultAction];
 
 	id preferredAction = nil;
-    if (preferredActionID)
+    if (preferredActionID) {
 		preferredAction = [self actionForIdentifier:preferredActionID];
+	}
 
 	//	NSLog(@"prefer \"%@\"", preferredActionID);
 	//	NSLog(@"actions %d", [actions count]);
@@ -339,8 +347,9 @@ QSExecutor *QSExec = nil;
 	actions = [[QSLibrarian sharedInstance] scoredArrayForString:[NSString stringWithFormat:@"QSActionMnemonic:%@", [dObject primaryType]] inSet:actions mnemonicsOnly:YES];
 #endif
 
-	if (preferredAction)
+	if (preferredAction) {
 		actions = [NSArray arrayWithObjects:preferredAction, actions, nil];
+	}
 	return actions;
 }
 
@@ -368,43 +377,35 @@ QSExecutor *QSExec = nil;
 - (void)logActions {}
 
 - (NSArray *)validActionsForDirectObject:(QSObject *)dObject indirectObject:(QSObject *)iObject {
-	if (!dObject) return nil;
+	if (!dObject) {
+		return nil;
+	}
+	
+#ifdef DEBUG
+	// Used for logging the time taken to create the actions
 	NSDate *startDate = [NSDate date];
-	NSMutableArray *actions = [NSMutableArray arrayWithCapacity:1];
-	// unsigned i;
-	id aObject = nil;
-	NSString *fileType = [dObject singleFileType];
+#endif
+	
+	NSMutableArray *actions = [[NSMutableArray alloc] init];
 
-	NSMutableDictionary *validatedActionsBySource = [NSMutableDictionary dictionary];
-	NSArray *validSourceActions;
-
-	//	for(i = 0; i<[oldActionObjects count]; i++) {
-	//		aObject = [oldActionObjects objectAtIndex:i];
-	//		validSourceActions = [self validActionsForDirectObject:(QSObject *)dObject indirectObject:(QSObject *)iObject fromSource:aObject types:(NSSet *)types fileType:(NSString *)fileType];
-	//		if (validSourceActions) {
-	//			//[validatedActionsBySource setObject:validSourceActions forKey:NSStringFromClass([aObject class])];
-	//			[actions addObjectsFromArray:validSourceActions];
-	//		}
-	//	}
-	//	NSLog(@"oldActionObjects %@", oldActionObjects);
-	//
-	//if (bypassValidation) NSLog(@"bypasssing validation");
-	NSMutableArray *validActions = [[[actionIdentifiers objectsForKeys:actions notFoundMarker:[NSNull null]]mutableCopy] autorelease]; //
+	NSMutableArray *validActions = [[[actionIdentifiers objectsForKeys:actions notFoundMarker:[NSNull null]] mutableCopy] autorelease];
+	[actions release];
 	[validActions removeObject:[NSNull null]];
 
-	//NSArray *newActions = bypassValidation?validActions
-	//									:
+	NSString *fileType = [dObject singleFileType];
 	NSArray *newActions = [self actionsForTypes:[dObject types] fileTypes:(fileType ? [NSArray arrayWithObject:fileType] : nil)];
+	
+	// for loop vars
 	BOOL isValid;
-//    NSLog(@"List of Actions: %@\n\n",newActions);
+	id aObject = nil;
+	NSArray *validSourceActions;
+	NSMutableDictionary *validatedActionsBySource = [NSMutableDictionary dictionary];
+
     for (QSAction *thisAction in newActions) {
-//		NSLog(@"This Action: %@ is Enabled",[thisAction identifier]);
 		validSourceActions = nil;
 		NSDictionary *actionDict = [thisAction objectForType:QSActionType];
 		isValid = ![[actionDict objectForKey:kActionValidatesObjects] boolValue];
-        
-		//NSLog(@"thisact %@", thisAction);
-        
+                
 		if (!isValid) {
 			validSourceActions = [validatedActionsBySource objectForKey:[actionDict objectForKey:kActionClass]];
 			if (!validSourceActions) {
@@ -412,8 +413,9 @@ QSExecutor *QSExec = nil;
 				aObject = [thisAction provider];
 				validSourceActions = [self validActionsForDirectObject:dObject indirectObject:iObject fromSource:aObject types:nil fileType:nil];
 				NSString *className = NSStringFromClass([aObject class]);
-				if (className)
+				if (className) {
 					[validatedActionsBySource setObject:validSourceActions?validSourceActions:[NSArray array] forKey:className];
+				}
                 
 				if (validSourceActions) {
 					[actions addObjectsFromArray:validSourceActions];
@@ -422,18 +424,21 @@ QSExecutor *QSExec = nil;
             
 			isValid = [validSourceActions containsObject:[thisAction identifier]];
 		}
-		//if ([validSourceActions count])
-		//	NSLog(@"Actions for %@:%@", thisAction, validSourceActions);
         
-		if (isValid) [validActions addObject:thisAction];
+		if (isValid) {
+			[validActions addObject:thisAction];
+		}
     }
 
-	// NSLog(@"Actions for %@:%@", [dObject name] , validActions);
 	if (![validActions count]) {
 		NSLog(@"unable to find actions for %@", actionIdentifiers);
 		NSLog(@"types %@ %@", [NSSet setWithArray:[dObject types]], fileType);
 	}
-	NSLog(@"Took %dµs to sort actions for dObject: %@",(int)(-[startDate timeIntervalSinceNow] *1000000),[dObject name]);
+#ifdef DEBUG
+	if (VERBOSE) {
+		NSLog(@"Took %dµs to sort actions for dObject: %@",(int)(-[startDate timeIntervalSinceNow] *1000000),[dObject name]);
+	}
+#endif
 	return [[validActions mutableCopy] autorelease];
 }
 
@@ -511,11 +516,7 @@ QSExecutor *QSExec = nil;
 	[self performSelector:@selector(writeActionsInfoNow) withObject:nil afterDelay:3.0 extend:YES];
 }
 - (void)writeActionsInfoNow {
-#warning should sort out #if 1 - p_j_r 22/05/11
-#if 1
-	[[NSDictionary dictionaryWithObjects:[NSArray arrayWithObjects:actionPrecedence, actionRanking, actionActivation, actionMenuActivation, actionIndirects, actionNames, nil] forKeys:[NSArray arrayWithObjects:@"actionPrecedence", @"actionRanking", @"actionActivation", @"actionMenuActivation", @"actionIndirects", @"actionNames", nil]] writeToFile:pQSActionsLocation atomically:YES];
-#else
-	NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+	NSMutableDictionary *dict = [[NSMutableDictionary alloc] init];
 	[dict setObject:actionPrecedence forKey:@"actionPrecedence"];
 	[dict setObject:actionRanking forKey:@"actionRanking"];
 	[dict setObject:actionActivation forKey:@"actionActivation"];
@@ -523,7 +524,8 @@ QSExecutor *QSExec = nil;
 	[dict setObject:actionIndirects forKey:@"actionIndirects"];
 	[dict setObject:actionNames forKey:@"actionNames"];
 	[dict writeToFile:pQSActionsLocation atomically:YES];
-#endif
+	[dict release];
+	
 #ifdef DEBUG
 	if (VERBOSE) NSLog(@"Wrote Actions Info");
 #endif
