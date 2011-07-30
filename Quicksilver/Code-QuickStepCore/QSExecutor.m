@@ -32,7 +32,9 @@
 
 //#define compGT(a, b) (a < b)
 
-#define pQSActionsLocation QSApplicationSupportSubPath(@"Actions.plist", NO)
+#define pQSActionsLocation QSApplicationSupportSubPath(@"Actionsv2.plist", NO)
+#define pQSOldActionsLocation QSApplicationSupportSubPath(@"Actions.plist", NO)
+
 
 QSExecutor *QSExec = nil;
 
@@ -59,13 +61,48 @@ QSExecutor *QSExec = nil;
 		directObjectTypes = [[NSMutableDictionary alloc] initWithCapacity:1];
 	 	directObjectFileTypes = [[NSMutableDictionary alloc] initWithCapacity:1];
 
-		NSDictionary *actionsPrefs = [NSDictionary dictionaryWithContentsOfFile:pQSActionsLocation];
+		NSDictionary *actionsPrefs = [[NSDictionary alloc] initWithContentsOfFile:pQSActionsLocation];
+		NSDictionary *oldActionsPrefs = nil;
+		NSDictionary *actionActivation = nil;
+		
+		// Upgrading from an older QS version? New QS Installation?
+		if (!actionsPrefs) {
+			oldActionsPrefs = [[NSDictionary  alloc] initWithContentsOfFile:pQSOldActionsLocation];
+			if (!oldActionsPrefs) {
+				// New QS installation
+				actionsPrefs = [NSDictionary dictionary];
+			}
+			else {
+				// Upgrade the old school actions prefs
+					NSLog(@"Creating / Upgrading the Actions .plist");
+				actionsPrefs = [oldActionsPrefs copy];
+				[oldActionsPrefs release];
+					// Alter the format. We've moving from an NSDict with 'enabled' bool 
+					// keys to 2 NSSets defining the enabled/disabled actions
+				actionActivation = [actionsPrefs objectForKey:@"actionActivation"];
+				NSMutableArray *tempEnabledActions = [NSMutableArray array];
+				NSMutableArray *tempDisabledActions = [NSMutableArray array];
+				for(NSString * key in actionActivation) {
+						BOOL enabled = [[actionActivation objectForKey:key] boolValue];
+						if (enabled == TRUE) {
+							[tempEnabledActions addObject:key];
+						}
+						else {
+							[tempDisabledActions addObject:key];
+						}
+					}
+				
+				actionActivation = [[NSDictionary dictionaryWithObjects: [NSArray arrayWithObjects:tempEnabledActions, tempDisabledActions,nil] forKeys: [NSArray arrayWithObjects:@"enabledActions",@"disabledActions",nil] ] copy];
+			}
+		}
 		actionPrecedence = [[actionsPrefs objectForKey:@"actionPrecedence"] mutableCopy];
 		actionRanking = [[actionsPrefs objectForKey:@"actionRanking"] mutableCopy];
 		// Actions that appear in the 'actions menu' (use 'show action menu' action to see it)
 		actionMenuActivation = [[actionsPrefs objectForKey:@"actionMenuActivation"] mutableCopy];
 		// Actions that show up in the 2nd pane
-		NSMutableDictionary *actionActivation = [actionsPrefs objectForKey:@"actionActivation"];
+		if (!actionActivation) {
+			actionActivation = [actionsPrefs objectForKey:@"actionActivation"];
+		}
 		
 		// set the enabled and disabled actions
 		enabledActions = [[actionActivation objectForKey:@"enabledActions"] mutableCopy];
@@ -73,6 +110,8 @@ QSExecutor *QSExec = nil;
 		
 		actionIndirects = [[actionsPrefs objectForKey:@"actionIndirects"] mutableCopy];
 		actionNames = [[actionsPrefs objectForKey:@"actionNames"] mutableCopy];
+		
+		[actionsPrefs release];
 
 		if (!actionPrecedence)
 			actionPrecedence = [[NSMutableDictionary alloc] init];
@@ -85,28 +124,13 @@ QSExecutor *QSExec = nil;
 		if (!actionNames)
 			actionNames = [[NSMutableDictionary alloc] init];
 		
-		// Check to see if the Actions.plist is in the newest format, if not upgrade it
-		// Also the same case for if we've got a new QS install
-		if (!enabledActions || !disabledActions) {
-			NSLog(@"Creating / Upgrading the Actions .plist");
-			NSMutableArray *tempEnabledActions = [[NSMutableArray alloc] init];
-			NSMutableArray *tempDisabledActions = [[NSMutableArray alloc] init];
-			for(NSString * key in actionActivation) {
-				BOOL enabled = [[actionActivation objectForKey:key] boolValue];
-				if (enabled == TRUE) {
-					[tempEnabledActions addObject:key];
-				}
-				else if(enabled == FALSE) {
-					[tempDisabledActions addObject:key];
-				}
-			}
-			enabledActions = [tempEnabledActions mutableCopy];
-			disabledActions = [tempDisabledActions mutableCopy];
-			[tempEnabledActions release];
-			[tempDisabledActions release];
-			[self writeActionsInfoNow];
-		}
 		
+		if (oldActionsPrefs) {
+			NSLog(@"Writing the new Actions preferences to Actionsv2.plist");
+			[self writeActionsInfoNow];
+			[actionActivation release];
+			[oldActionsPrefs release];
+		}
 		//[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(writeCatalog:) name:QSCatalogEntryChanged object:nil];
 #if 0
 		[(NSImage *)[[[NSImage alloc] initWithSize:NSZeroSize] autorelease] setName:@"QSDirectProxyImage"];
@@ -198,14 +222,10 @@ QSExecutor *QSExec = nil;
 	
 	[actionIdentifiers setObject:action forKey:ident];
 
-	// Set the Action object's 'enabled' flag based on which array the action is in
-	if([enabledActions containsObject:action]) {
-		[action setEnabled:YES];
-	}
-	else if([disabledActions containsObject:action]) {
-		[action setEnabled:NO];
-	}
-	else {
+	// If there are no user-defined action settings (enabled/disabled) for this action, set its enabled value
+	// to be the default (defined by the 'enabled' BOOL in the Info.plist) ** The 'enabled' bool should really
+	// be called 'enabledByDefault' or something similar
+	if(![enabledActions containsObject:ident] && ![disabledActions containsObject:ident]) {
 		[action setEnabled:[action defaultEnabled]];
 	}
 	
