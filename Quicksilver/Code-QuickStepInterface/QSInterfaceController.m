@@ -278,7 +278,7 @@
     if([dObject isKindOfClass:[QSRankedObject class]])
         dObject = [dObject object];
     
-    if([iObject isKindOfClass:[QSRankedObject class]])
+    if(iObject && [iObject isKindOfClass:[QSRankedObject class]])
         iObject = [iObject object];
     
 	return [QSExec rankedActionsForDirectObject:dObject indirectObject:iObject];
@@ -294,10 +294,11 @@
 	[actionsUpdateTimer invalidate];
 
 	[aSelector setEnabled:YES];
-	NSString *type = [NSString stringWithFormat:@"QSActionMnemonic:%@", [[dSelector objectValue] primaryType]];
 	NSArray *actions = [self rankedActions];
 
 	[self updateControl:aSelector withArray:actions];
+
+	NSString *type = [NSString stringWithFormat:@"QSActionMnemonic:%@", [[dSelector objectValue] primaryType]];
 
 	[aSelector setMatchedString:type];
 	[aSelector setSearchString:nil];
