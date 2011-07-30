@@ -3,8 +3,8 @@
 <plist version="1.0">
 <dict>
     <key>FinderOpenTrashAction</key>
-    <string>Open</string>
+    <string>Open Trash</string>
     <key>FinderEmptyTrashAction</key>
-    <string>Empty</string>
+    <string>Empty Trash</string>
 </dict>
 </plist>
