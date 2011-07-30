@@ -76,12 +76,11 @@ QSExecutor *QSExec = nil;
 				// Upgrade the old school actions prefs
 					NSLog(@"Creating / Upgrading the Actions .plist");
 				actionsPrefs = [oldActionsPrefs copy];
-				[oldActionsPrefs release];
 					// Alter the format. We've moving from an NSDict with 'enabled' bool 
 					// keys to 2 NSSets defining the enabled/disabled actions
 				actionActivation = [actionsPrefs objectForKey:@"actionActivation"];
-				NSMutableArray *tempEnabledActions = [NSMutableArray array];
-				NSMutableArray *tempDisabledActions = [NSMutableArray array];
+				NSMutableArray *tempEnabledActions = [[NSMutableArray alloc] init];
+				NSMutableArray *tempDisabledActions = [[NSMutableArray alloc] init];
 				for(NSString * key in actionActivation) {
 						BOOL enabled = [[actionActivation objectForKey:key] boolValue];
 						if (enabled == TRUE) {
@@ -91,22 +90,27 @@ QSExecutor *QSExec = nil;
 							[tempDisabledActions addObject:key];
 						}
 					}
-				
-				actionActivation = [[NSDictionary dictionaryWithObjects: [NSArray arrayWithObjects:tempEnabledActions, tempDisabledActions,nil] forKeys: [NSArray arrayWithObjects:@"enabledActions",@"disabledActions",nil] ] copy];
+				enabledActions = [tempEnabledActions mutableCopy];
+				disabledActions = [tempDisabledActions mutableCopy];
+				[tempEnabledActions release];
+				[tempDisabledActions release];
+				actionActivation = [NSDictionary dictionaryWithObjects: [NSArray arrayWithObjects:enabledActions, disabledActions,nil] forKeys: [NSArray arrayWithObjects:@"enabledActions",@"disabledActions",nil] ];
 			}
 		}
 		actionPrecedence = [[actionsPrefs objectForKey:@"actionPrecedence"] mutableCopy];
 		actionRanking = [[actionsPrefs objectForKey:@"actionRanking"] mutableCopy];
 		// Actions that appear in the 'actions menu' (use 'show action menu' action to see it)
 		actionMenuActivation = [[actionsPrefs objectForKey:@"actionMenuActivation"] mutableCopy];
-		// Actions that show up in the 2nd pane
+		
+		
+		// actionActivation: Actions that show up in the 2nd pane.
+		// If we haven't gone through the upgrade process, we need to get this from the .plist
 		if (!actionActivation) {
 			actionActivation = [actionsPrefs objectForKey:@"actionActivation"];
+			// set the enabled and disabled actions
+			enabledActions = [[actionActivation objectForKey:@"enabledActions"] mutableCopy];
+			disabledActions = [[actionActivation objectForKey:@"disabledActions"]mutableCopy];
 		}
-		
-		// set the enabled and disabled actions
-		enabledActions = [[actionActivation objectForKey:@"enabledActions"] mutableCopy];
-		disabledActions = [[actionActivation objectForKey:@"disabledActions"]mutableCopy];
 		
 		actionIndirects = [[actionsPrefs objectForKey:@"actionIndirects"] mutableCopy];
 		actionNames = [[actionsPrefs objectForKey:@"actionNames"] mutableCopy];
@@ -128,7 +132,6 @@ QSExecutor *QSExec = nil;
 		if (oldActionsPrefs) {
 			NSLog(@"Writing the new Actions preferences to Actionsv2.plist");
 			[self writeActionsInfoNow];
-			[actionActivation release];
 			[oldActionsPrefs release];
 		}
 		//[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(writeCatalog:) name:QSCatalogEntryChanged object:nil];
