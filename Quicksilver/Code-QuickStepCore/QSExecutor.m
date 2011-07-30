@@ -63,7 +63,12 @@ QSExecutor *QSExec = nil;
 		// Actions that appear in the 'actions menu' (use 'show action menu' action to see it)
 		actionMenuActivation = [[actionsPrefs objectForKey:@"actionMenuActivation"] mutableCopy];
 		// Actions that show up in the 2nd pane
-		actionActivation = [[actionsPrefs objectForKey:@"actionActivation"] mutableCopy];
+		NSMutableDictionary *actionActivation = [[actionsPrefs objectForKey:@"actionActivation"] mutableCopy];
+		
+		// set the enabled and disabled actions
+		enabledActions = [actionActivation objectForKey:@"enabledActions"];
+		disabledActions = [actionActivation objectForKey:@"disabledActions"];
+		
 		actionIndirects = [[actionsPrefs objectForKey:@"actionIndirects"] mutableCopy];
 		actionNames = [[actionsPrefs objectForKey:@"actionNames"] mutableCopy];
 
@@ -71,14 +76,37 @@ QSExecutor *QSExec = nil;
 			actionPrecedence = [[NSMutableDictionary alloc] init];
 		if (!actionRanking)
 			actionRanking = [[NSMutableArray alloc] init];
-		if (!actionActivation)
-			actionActivation = [[NSMutableDictionary alloc] init];
 		if (!actionMenuActivation)
 			actionMenuActivation = [[NSMutableDictionary alloc] init];
 		if (!actionIndirects)
 			actionIndirects = [[NSMutableDictionary alloc] init];
 		if (!actionNames)
 			actionNames = [[NSMutableDictionary alloc] init];
+		
+		// Check to see if the Actions.plist is in the newest format, if not upgrade it
+		// Also the same case for if we've got a new QS install
+		if (!enabledActions || !disabledActions) {
+			NSLog(@"Creating / Upgrading the Actions .plist");
+			NSMutableArray *tempEnabledActions = [[NSMutableArray alloc] init];
+			NSMutableArray *tempDisabledActions = [[NSMutableArray alloc] init];
+			for(NSString * key in actionActivation) {
+				BOOL enabled = [[actionActivation objectForKey:key] boolValue];
+				if (enabled == TRUE) {
+					[tempEnabledActions addObject:key];
+				}
+				else if(enabled == FALSE) {
+					[tempDisabledActions addObject:key];
+				}
+			}
+			enabledActions = [tempEnabledActions mutableCopy];
+			disabledActions = [tempDisabledActions mutableCopy];
+			[tempEnabledActions release];
+			[tempDisabledActions release];
+			[self writeActionsInfoNow];
+		}
+		
+		// we're done with the old way of saving the actions
+		[actionActivation release];
 
 		//[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(writeCatalog:) name:QSCatalogEntryChanged object:nil];
 #if 0
@@ -98,7 +126,8 @@ QSExecutor *QSExec = nil;
 	[actionSources release];
 	[actionRanking release];
 	[actionPrecedence release];
-	[actionActivation release];
+	[enabledActions release];
+	[disabledActions release];
 	[actionMenuActivation release];
 	[actionIndirects release];
 	[actionNames release];	
@@ -168,26 +197,30 @@ QSExecutor *QSExec = nil;
 		[[directObjectFileTypes allValues] makeObjectsPerformSelector:@selector(removeObject:) withObject:dupAction];
 	}
 
-	[actionIdentifiers setObject:action forKey:ident];
+	// Set the Action object's 'enabled' flag based on which array the action is in
+	if([enabledActions containsObject:action]) {
+		[action setEnabled:YES];
+	}
+	else if([disabledActions containsObject:action]) {
+		[action setEnabled:NO];
+	}
+	else {
+		[action setEnabled:[action defaultEnabled]];
+	}
+	
 
+	// action menu actions
     
-	BOOL activation = NO;
-    NSNumber *act = nil;
-    act = [actionActivation objectForKey:ident];
-	if (act)
-        activation = [act boolValue];
-    else
-        activation = [action defaultEnabled];
-	[action setEnabled:activation];
-    
-    
-    act = [actionMenuActivation objectForKey:ident];
+    BOOL activation = NO;
+    NSNumber *act = [actionMenuActivation objectForKey:ident];
 	if (act)
         activation = [act boolValue];
     else
         activation = [action defaultEnabled];
 	[action setMenuEnabled:activation];    
 
+	
+		
 	int index = [actionRanking indexOfObject:ident];
 
 	if (index == NSNotFound) {
@@ -207,6 +240,7 @@ QSExecutor *QSExec = nil;
 	} else {
 		[action _setRank:index];
 	}
+<<<<<<< Updated upstream
 	if (![action enabled]) {
 	[self addActionsToActionsArray:action];
 	}
@@ -214,6 +248,10 @@ QSExecutor *QSExec = nil;
 
 - (void)addActionsToActionsArray:(QSAction *)action {
 	
+=======
+	if([action enabled]) {
+
+>>>>>>> Stashed changes
 	NSDictionary *actionDict = [action objectForType:QSActionType];
 	NSArray *directTypes = [actionDict objectForKey:@"directTypes"];
 	if (![directTypes count]) directTypes = [NSArray arrayWithObject:@"*"];
@@ -228,7 +266,9 @@ QSExecutor *QSExec = nil;
 			[[self actionsArrayForFileType:type] addObject:action];
 		}
 	}
+	}
 }
+<<<<<<< Updated upstream
 - (void)removeActionsFromActionsArray:(QSAction *)action {
 	
 	NSDictionary *actionDict = [action objectForType:QSActionType];
@@ -246,6 +286,8 @@ QSExecutor *QSExec = nil;
 		}
 	}
 }
+=======
+>>>>>>> Stashed changes
 	
 
 - (void)updateRanks {
@@ -449,12 +491,32 @@ QSExecutor *QSExec = nil;
 }
 
 - (BOOL)actionIsEnabled:(QSAction*)action {
-    id val = [actionActivation objectForKey:[action identifier]];
-    return (val ? [val boolValue] : YES);
+    return [enabledActions containsObject:[action identifier]];;
 }
-- (void)setAction:(QSAction *)action isEnabled:(BOOL)flag {
-// 	if (VERBOSE) NSLog(@"set action %@ is enabled %d", action, flag);
-	[actionActivation setObject:[NSNumber numberWithBool:flag] forKey:[action identifier]];
+- (void)setAction:(QSAction *)action isEnabled:(BOOL)enabled {
+
+	NSString *ident = [action identifier];
+	if (enabled) {
+		// add the action to the enabled list if it's not there
+		if (![enabledActions containsObject:ident]) {
+			[enabledActions addObject:ident];
+		}
+		// remove the action from the disabled list if it's there
+		if ([disabledActions containsObject:ident]) {
+			[disabledActions removeObject:ident];
+		}
+	}
+	// Setting the action to disabled
+	else {
+		// add the action to the disabled list if it's not there
+		if (![disabledActions containsObject:ident]) {
+			[disabledActions addObject:ident];
+		}
+		// remove the action from the enabled list if it's there
+		if ([enabledActions containsObject:ident]) {
+			[enabledActions removeObject:ident];
+		}
+	}
 	[self writeActionsInfo];
 }
 
@@ -516,7 +578,14 @@ QSExecutor *QSExec = nil;
 	[self performSelector:@selector(writeActionsInfoNow) withObject:nil afterDelay:3.0 extend:YES];
 }
 - (void)writeActionsInfoNow {
+<<<<<<< Updated upstream
 	NSMutableDictionary *dict = [[NSMutableDictionary alloc] init];
+=======
+#if 1
+	[[NSDictionary dictionaryWithObjects:[NSArray arrayWithObjects:actionPrecedence, actionRanking, [NSDictionary dictionaryWithObjectsAndKeys:enabledActions, @"enabledActions",disabledActions,@"disabledActions",nil], actionMenuActivation, actionIndirects, actionNames, nil] forKeys:[NSArray arrayWithObjects:@"actionPrecedence", @"actionRanking", @"actionActivation", @"actionMenuActivation", @"actionIndirects", @"actionNames", nil]] writeToFile:pQSActionsLocation atomically:YES];
+#else
+	NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+>>>>>>> Stashed changes
 	[dict setObject:actionPrecedence forKey:@"actionPrecedence"];
 	[dict setObject:actionRanking forKey:@"actionRanking"];
 	[dict setObject:actionActivation forKey:@"actionActivation"];
@@ -557,7 +626,9 @@ QSExecutor *QSExec = nil;
             
             if (action) {
                 [self addAction:action];
+				if ([action enabled]) {
                 [[self makeArrayForSource:[bundle bundleIdentifier]] addObject:action];
+				}
             }
         }
 	} else {

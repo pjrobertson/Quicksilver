@@ -23,10 +23,12 @@ extern QSExecutor *QSExec; // Shared Instance
 
 	NSMutableArray *actionRanking;
 	NSMutableDictionary *actionPrecedence;
-	NSMutableDictionary *actionActivation;
 	NSMutableDictionary *actionMenuActivation;
 	NSMutableDictionary *actionIndirects;
 	NSMutableDictionary *actionNames;
+	
+	NSMutableArray *enabledActions;
+	NSMutableArray *disabledActions;
  }
 + (id)sharedInstance;
 
@@ -46,7 +48,7 @@ extern QSExecutor *QSExec; // Shared Instance
 - (NSMutableArray *)makeArrayForSource:(NSString *)sourceid;
 
 - (BOOL)actionIsEnabled:(QSAction*)action;
-- (void)setAction:(QSAction *)action isEnabled:(BOOL)flag;
+- (void)setAction:(QSAction *)action isEnabled:(BOOL)enabled;
 - (BOOL)actionIsMenuEnabled:(QSAction*)action;
 - (void)setAction:(QSAction *)action isMenuEnabled:(BOOL)flag;
 - (void)addActionsToActionsArray:(QSAction *)action;
@@ -60,6 +62,7 @@ extern QSExecutor *QSExec; // Shared Instance
 
 - (void)loadFileActions;
 - (void)writeActionsInfo;
+- (void)writeActionsInfoNow;
 @end
 
 extern QSExecutor *QSExec; // Shared Instance
