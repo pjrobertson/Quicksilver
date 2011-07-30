@@ -53,6 +53,8 @@ QSExecutor *QSExec = nil;
 - (id)init {
 	if (self = [super init]) {
 		actionSources = [[NSMutableDictionary alloc] initWithCapacity:1];
+		
+		// The full list of actions, populated when QS starts up - by scanning all the plugins' .plists
 		actionIdentifiers = [[NSMutableDictionary alloc] initWithCapacity:1];
 		directObjectTypes = [[NSMutableDictionary alloc] initWithCapacity:1];
 	 	directObjectFileTypes = [[NSMutableDictionary alloc] initWithCapacity:1];
@@ -193,6 +195,8 @@ QSExecutor *QSExec = nil;
 		[[directObjectTypes allValues] makeObjectsPerformSelector:@selector(removeObject:) withObject:dupAction];
 		[[directObjectFileTypes allValues] makeObjectsPerformSelector:@selector(removeObject:) withObject:dupAction];
 	}
+	
+	[actionIdentifiers setObject:action forKey:ident];
 
 	// Set the Action object's 'enabled' flag based on which array the action is in
 	if([enabledActions containsObject:action]) {
@@ -388,16 +392,12 @@ QSExecutor *QSExec = nil;
 		return nil;
 	}
 	
+	NSMutableArray *validActions = [NSMutableArray array];
+	
 #ifdef DEBUG
 	// Used for logging the time taken to create the actions
 	NSDate *startDate = [NSDate date];
 #endif
-	
-	NSMutableArray *actions = [[NSMutableArray alloc] init];
-
-	NSMutableArray *validActions = [[[actionIdentifiers objectsForKeys:actions notFoundMarker:[NSNull null]] mutableCopy] autorelease];
-	[actions release];
-	[validActions removeObject:[NSNull null]];
 
 	NSString *fileType = [dObject singleFileType];
 	NSArray *newActions = [self actionsForTypes:[dObject types] fileTypes:(fileType ? [NSArray arrayWithObject:fileType] : nil)];
@@ -408,6 +408,12 @@ QSExecutor *QSExec = nil;
 	NSArray *validSourceActions;
 	NSMutableDictionary *validatedActionsBySource = [NSMutableDictionary dictionary];
 
+	/* Validate the actions
+	   The actions will validate if either
+	      a) The action is valid for ALL object types (no 'validatesObjects' key in the Info.plist) or
+	      b) the action provider (the 'actionClass' string set in the Info.plist) method [validActionsForDirectObject:dObject indirectObject:iObject]
+	         returns an array containing this action.
+	*/
     for (QSAction *thisAction in newActions) {
 		validSourceActions = nil;
 		NSDictionary *actionDict = [thisAction objectForType:QSActionType];
@@ -423,23 +429,19 @@ QSExecutor *QSExec = nil;
 				if (className) {
 					[validatedActionsBySource setObject:validSourceActions?validSourceActions:[NSArray array] forKey:className];
 				}
-                
-				if (validSourceActions) {
-					[actions addObjectsFromArray:validSourceActions];
-				}
 			}
             
 			isValid = [validSourceActions containsObject:[thisAction identifier]];
 		}
-        
-		if (isValid) {
-			[validActions addObject:thisAction];
-		}
+		
+		if (isValid) [validActions addObject:thisAction];
+	
     }
 
 	if (![validActions count]) {
 		NSLog(@"unable to find actions for %@", actionIdentifiers);
 		NSLog(@"types %@ %@", [NSSet setWithArray:[dObject types]], fileType);
+		return nil;
 	}
 #ifdef DEBUG
 	if (VERBOSE) {
