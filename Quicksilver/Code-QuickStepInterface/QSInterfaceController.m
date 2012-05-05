@@ -1,3 +1,5 @@
+
+
 #import "QSPreferenceKeys.h"
 #import "QSInterfaceController.h"
 #import "QSHistoryController.h"
@@ -75,7 +77,7 @@
 	[nc addObserver:self selector:@selector(objectModified:) name:QSObjectModified object:nil];
 	[nc addObserver:self selector:@selector(objectIconModified:) name:QSObjectIconModified object:nil];
 	[nc addObserver:self selector:@selector(searchObjectChanged:) name:@"SearchObjectChanged" object:nil];
-	[nc addObserver:self selector:@selector(appChanged:) name:QSActiveApplicationChanged object:nil];
+//	[nc addObserver:self selector:@selector(appChanged:) name:QSActiveApplicationChanged object:nil];
 	[QSHistoryController sharedInstance];
 	return self;
 }
@@ -412,11 +414,11 @@
 	[[self window] enableFlushWindow];
 }
 
-- (void)appChanged:(NSNotification *)aNotification {
-	NSString *currentApp = [[[NSWorkspace sharedWorkspace] activeApplication] objectForKey:@"NSApplicationBundleIdentifier"];
-	if (![currentApp isEqualToString:@"com.blacktree.Quicksilver"])
-		[self hideWindows:self];
-}
+//- (void)appChanged:(NSNotification *)aNotification {
+//	NSString *currentApp = [[[NSWorkspace sharedWorkspace] activeApplication] objectForKey:@"NSApplicationBundleIdentifier"];
+//	if (![currentApp isEqualToString:@"com.blacktree.Quicksilver"])
+//		[self hideWindows:self];
+//}
 
 - (void)invalidateHide {
 	[hideTimer invalidate];

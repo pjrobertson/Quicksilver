@@ -88,7 +88,7 @@ BOOL QSApplicationCompletedLaunch = NO;
 	switch ((int) [theEvent type]) {
 		case NSProcessNotificationEvent:
 			[[QSProcessMonitor sharedInstance] handleProcessEvent:theEvent];
-			break;
+            return;
 		case NSRightMouseDown:
 			if (![theEvent windowNumber]) { // Workaround for ignored right clicks on non activating panels
 				[self forwardWindowlessRightClick:theEvent];

@@ -31,6 +31,9 @@
 
 - (NSDictionary *)currentApplication;
 - (NSDictionary *)previousApplication;
+
+- (BOOL)handleProcessEvent:(NSEvent *)theEvent;
+
 @end
 
 /* QSProcessMonitor notifications */
