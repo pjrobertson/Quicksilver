@@ -10,6 +10,7 @@
 #import "QSPreferencesController.h"
 #import "QSSetupAssistant.h"
 #import "QSTaskViewer.h"
+#import "QSCrashReporterWindowController.h"
 
 #define DEVEXPIRE 180.0f
 #define DEPEXPIRE 365.24219878f
@@ -25,6 +26,9 @@
 static QSController *defaultController = nil;
 
 @implementation QSController
+
+@synthesize crashReportPath;
+
 - (void)awakeFromNib { if (!defaultController) defaultController = [self retain];  }
 + (id)sharedInstance {
 	if (!defaultController)
@@ -611,12 +615,14 @@ static QSController *defaultController = nil;
 	int status = [NSApp checkLaunchStatus];
 
 	NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-	NSString *lastLocation = [defaults objectForKey:kLastUsedLocation];
 	NSString *bundlePath = [[NSBundle mainBundle] bundlePath];
 	NSString *lastVersionString = [defaults objectForKey:kLastUsedVersion];
 	int lastVersion = [lastVersionString respondsToSelector:@selector(hexIntValue)] ? [lastVersionString hexIntValue] : 0;
 	switch (status) {
-		case QSApplicationUpgradedLaunch:
+		case QSApplicationUpgradedLaunch: {
+/** Turn off "running from a new location" and "you are using a new version of QS" popups for DEBUG builds **/
+#ifndef DEBUG     
+            NSString *lastLocation = [defaults objectForKey:kLastUsedLocation];
 			if (lastLocation && ![bundlePath isEqualToString:[lastLocation stringByStandardizingPath]]) {
 				//New version in new location.
 				[NSApp activateIgnoringOtherApps:YES];
@@ -624,8 +630,6 @@ static QSController *defaultController = nil;
 				if (selection)
 					[NSApp relaunchAtPath:lastLocation movedFromPath:bundlePath];
 			}
-			
-#ifndef DEBUG
 			if ([defaults boolForKey:kShowReleaseNotesOnUpgrade]) {
 				[NSApp activateIgnoringOtherApps:YES];
 				int selection = NSRunInformationalAlertPanel([NSString stringWithFormat:@"Quicksilver has been updated", nil] , @"You are using a new version of Quicksilver. Would you like to see the Release Notes?", @"Show Release Notes", @"Ignore", nil);
@@ -642,12 +646,17 @@ static QSController *defaultController = nil;
 			}
 				newVersion = YES;
 			break;
-		case QSApplicationDowngradedLaunch:
+        }
+		case QSApplicationDowngradedLaunch: {
+/** Turn off "you have previously used a newer version" popup for DEBUG builds **/
+#ifndef DEBUG
 			[NSApp activateIgnoringOtherApps:YES];
 			int selection = NSRunInformationalAlertPanel([NSString stringWithFormat:@"This is an old version of Quicksilver", nil] , @"You have previously used a newer version. Perhaps you have duplicate copies?", @"Reveal this copy", @"Ignore", nil);
 			if (selection == 1)
 				[[NSWorkspace sharedWorkspace] selectFile:[[NSBundle mainBundle] bundlePath] inFileViewerRootedAtPath:@""];
+#endif
 				break;
+        }
 		case QSApplicationFirstLaunch: {
 			NSString *containerPath = [[bundlePath stringByDeletingLastPathComponent] stringByStandardizingPath];
 			BOOL shouldInstall = [containerPath isEqualToString:@"/Volumes/Quicksilver"] || [containerPath isEqualToString:[self internetDownloadLocation]];
@@ -686,70 +695,59 @@ static QSController *defaultController = nil;
 }
 
 - (void)checkForCrash {
-	NSMutableDictionary *state = [NSMutableDictionary dictionaryWithContentsOfFile:pStateLocation];
-	
-	// check to see if Quicksilver quit gracefully last time
-	if ([[state objectForKey:kQSQuitGracefully] isEqualToString:@"NO"]) {
-		NSFileManager *fm = [[NSFileManager alloc] init];
-		NSAlert *alert = [[NSAlert alloc] init];
-		[alert setAlertStyle:NSCriticalAlertStyle];
-		[alert setMessageText:@"Quicksilver Crashed"];
-		// Check to see if QS crashed whilst previously loading a plugin (registerPlugin method)
-		NSString *pluginName = [state objectForKey:kQSPluginCausedCrashAtLaunch];
-		if (pluginName) {
-			NSString *informativeText = [NSString stringWithFormat:@"Quicksilver crashed due to the %@ plugin not loading correctly.\nDo you wish to delete this plugin to launch Quicksilver?", pluginName];
-			[alert setInformativeText:informativeText];
-			[alert addButtonWithTitle:@"OK"];
-			[alert addButtonWithTitle:@"Cancel"];
-			NSInteger buttonClicked = [alert runModal];
-			if (buttonClicked == NSAlertFirstButtonReturn) {
-				// If user says 'OK', attempt to delete the faulty plugin
-				NSString *faultyPluginPath = [state objectForKey:kQSFaultyPluginPath];
-				if (faultyPluginPath) {
-					if (![fm removeItemAtPath:faultyPluginPath error:nil]) {
-						NSLog(@"Error removing faulty plugin. Continuing to attempt a launch");
-					}
-				}
-			}
-		}
-		else {
-#ifdef DEBUG
-			NSLog(@"Ignoring crash protection. You most likely hit 'Stop' in Xcode.");
-#endif
-#ifndef DEBUG
-			[alert setInformativeText:@"Sorry, Quicksilver crashed on last use.\nClearing caches may solve the problem.\nOtherwise you can do nothing and launch Quicksilver normally, or quit and read the FAQ."];
-			[alert addButtonWithTitle:@"Clear Caches"];
-			[alert addButtonWithTitle:@"Read FAQ"];
-			[alert addButtonWithTitle:@"Do Nothing"];
-			NSInteger buttonClicked = [alert runModal];
-			switch (buttonClicked) {
-				case NSAlertFirstButtonReturn: {
-					NSError * err = nil;
-					[fm removeItemAtPath:pIndexLocation error:&err];
-					if (err) {
-						NSLog(@"Error removing Quicksilver caches. Attempting re-launch anyway\nError: %@",err);
-					}
-					break;
-				}
-				case NSAlertSecondButtonReturn: {
-					[[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:[kHelpURL stringByAppendingString:@"FAQ#Quicksilver_crashes"]]];
-					[NSApp terminate:nil];
-					break;
-				}
-				default: {
-					break;
-				}
-			}
-#endif
-		}
-		[fm release];
-		[alert release];
-	}
-	
-	// store the typical "Quicksilver is running" state
-	NSDictionary *newState = [[NSDictionary alloc] initWithObjectsAndKeys:@"NO", kQSQuitGracefully, nil];
-	[newState writeToFile:pStateLocation atomically:NO];
-	[newState release];
+    
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    // obtain the last known crash date from the prefs
+    NSDate *lastKnownCrashDate = [defaults objectForKey:kLastKnownCrashDate];
+    
+	NSFileManager *fm = [[NSFileManager alloc] init];
+    
+    // get a list of files beginning with 'Quicksilver' from the crash reporter folder
+    NSArray *files = [fm contentsOfDirectoryAtPath:pCrashReporterFolder error:nil];
+    NSArray *filteredFiles = [files filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"SELF BEGINSWITH[c] 'Quicksilver'"]];
+
+    NSDate *mostRecentCrashDate = [NSDate distantPast];
+    // Enumerate crash files to find most recent crash report
+    for (NSString *individualFile in filteredFiles) {
+        NSDate *individualDate = [[fm attributesOfItemAtPath:[pCrashReporterFolder stringByAppendingPathComponent:individualFile] error:nil] objectForKey:NSFileCreationDate];
+        if ([individualDate compare:mostRecentCrashDate] == NSOrderedDescending) {
+            mostRecentCrashDate = individualDate;
+            [self setCrashReportPath:individualFile];
+        }
+    }
+    [mostRecentCrashDate retain];
+
+    // path to the most recent crash report (used by the crash reporter for sending the file to the server)
+    [self setCrashReportPath:[pCrashReporterFolder stringByAppendingPathComponent:crashReportPath]];
+    
+    // Check the QuicksilverState.plist file to see if a plugin caused a crash
+    NSDictionary *state = [NSDictionary dictionaryWithContentsOfFile:pStateLocation];
+    NSString *pluginName = [state objectForKey:kQSPluginCausedCrashAtLaunch];
+    NSWindowController *QSCrashController = nil;
+	// check to see if Quicksilver crashed since last used (there's a newer crash report or a plugin crashed)
+	if ((lastKnownCrashDate && [mostRecentCrashDate compare:lastKnownCrashDate] == NSOrderedDescending) ||  pluginName) {
+        
+        // Crash due to faulty plugin
+        if (pluginName) {
+            // There are no crash reports for these, so release the crashReportPath file and set to nil
+            [[self crashReportPath] release];
+            crashReportPath = nil;
+        }
+
+        // Crash occurred, load the crash reporter window
+        QSCrashController = [[QSCrashReporterWindowController alloc] initWithWindowNibName:@"QSCrashReporter"];
+        // Open the crash reporter window
+        [NSApp runModalForWindow:[QSCrashController window]];
+        [QSCrashController release];
+    }
+    [mostRecentCrashDate release];
+
+    // synchronise prefs and QuicksilverState file
+    [fm removeItemAtPath:pStateLocation error:nil];
+    [defaults setObject:mostRecentCrashDate forKey:kLastKnownCrashDate];
+    [defaults synchronize];
+
+    [fm release];
 }
 
 - (IBAction)showReleaseNotes:(id)sender { [[NSWorkspace sharedWorkspace] openFile:[[[NSBundle mainBundle] bundlePath] stringByAppendingPathComponent:@"Contents/SharedSupport/Changes.html"]];  }
@@ -796,9 +794,6 @@ static QSController *defaultController = nil;
 
 - (void)applicationWillTerminate:(NSNotification *)aNotification {
 	[[NSNotificationCenter defaultCenter] postNotificationName:@"WindowsShouldHide" object:self];
-	NSDictionary *state = [[NSDictionary alloc] initWithObjectsAndKeys:@"YES", kQSQuitGracefully, nil];
-	[state writeToFile:pStateLocation atomically:NO];
-	[state release];
 //    if (DEBUG_MEMORY) [self writeLeaksToFileAtPath:QSApplicationSupportSubPath(@"QSLeaks.plist", NO)];
 }
 
@@ -1108,5 +1103,6 @@ void QSSignalHandler(int i) {
 
 	return YES;
 }
+
 
 @end

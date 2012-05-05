@@ -90,6 +90,13 @@
 	[aSortDesc release];
 	[arrayController rearrangeObjects];
 
+    [infoButton setKeyEquivalent:@"i"];
+    [refreshButton setKeyEquivalent:@"r"];
+    for (NSButton *aButton in [NSArray arrayWithObjects:infoButton,refreshButton, nil]) {
+        [aButton setKeyEquivalentModifierMask:NSCommandKeyMask];
+    }
+
+    
 ////	[plugInTable setTarget:self];
 	//	[plugInTable setDoubleAction:@selector(tableDoubleAction:)];
 ////	[plugInTable setAction:@selector(tableAction:)];
@@ -148,9 +155,11 @@
 		NSString *htmlString;
 		NSString *defaultTitle = @"Plug-in Documentation";
 		if ([selection count] == 1) {
+            [infoButton setEnabled:YES];
 			[self setPlugInName:[NSString stringWithFormat:@"%@: %@", defaultTitle, [[selection objectAtIndex:0] name]]];
 			htmlString = [[selection objectAtIndex:0] infoHTML];
 		} else {
+            [infoButton setEnabled:NO];
 			[self setPlugInName:defaultTitle];
 			htmlString = @"";
 		}
@@ -363,8 +372,8 @@
 			case 4: //UnInstalled
 				[predicates addObject:[NSPredicate predicateWithFormat:@"isInstalled <= 0"]];
 				break;
-			case 5: //Installed, but disabled
-				[predicates addObject:[NSPredicate predicateWithFormat:@"isInstalled == 1 && enabled == 0"]];
+			case 5: //Installed, but disabled (either by the user or some error loading)
+				[predicates addObject:[NSPredicate predicateWithFormat:@"isInstalled == 1 && isLoaded == 0"]];
 				break;
 			default:
 				break;

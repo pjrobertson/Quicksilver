@@ -147,16 +147,7 @@ NSComparisonResult prefixCompare(NSString *aString, NSString *bString) {
 
 - (NSString *)URLEncoding {
 	
-	NSString *string = self;
-	
-	// For when we have to deal with % characters
-	if([string rangeOfString:@"%"].location != NSNotFound) {
-		// Decode the string first
-		string = [string URLDecoding];
-	}
-	
-	// escape embedded %-signs that don't appear to actually be escape sequences, and pre-decode the result to avoid double-encoding
- 	return [(NSString *)CFURLCreateStringByAddingPercentEscapes(NULL, (CFStringRef) string, CFSTR("#"), NULL, kCFStringEncodingUTF8) autorelease];
+    return [self URLEncodingWithEncoding:kCFStringEncodingUTF8];
 }
 
 - (NSString *)URLEncodingWithEncoding:(CFStringEncoding) encoding {
@@ -169,6 +160,11 @@ NSComparisonResult prefixCompare(NSString *aString, NSString *bString) {
 	
 	// escape embedded %-signs that don't appear to actually be escape sequences, and pre-decode the result to avoid double-encoding
 	return [(NSString *)CFURLCreateStringByAddingPercentEscapes(NULL, (CFStringRef) string, CFSTR("#"), NULL, encoding) autorelease];
+}
+
+- (NSString *)URLEncodeValue {
+    NSString *result = (NSString *) CFURLCreateStringByAddingPercentEscapes(kCFAllocatorDefault, (CFStringRef)self, NULL, CFSTR("?=&+"), kCFStringEncodingUTF8);
+    return [result autorelease];
 }
 
 - (NSString *)URLDecoding {
@@ -333,7 +329,7 @@ NSComparisonResult prefixCompare(NSString *aString, NSString *bString) {
 	return array;
 }
 
-- (NSString *)stringByResolvingWildcardsInPath {
+- (NSString *)subStringByResolvingWildcardsInPath {
 	NSRange index = [self rangeOfString:@"*"];
 	NSString *resolved;
 	if (index.location == NSNotFound) {
@@ -356,13 +352,21 @@ NSComparisonResult prefixCompare(NSString *aString, NSString *bString) {
 	
 	for (NSString *resolvedPathPart in contents) {
 		resolved = [[[basePath
-		   stringByAppendingPathComponent:resolvedPathPart]
-		   stringByAppendingPathComponent:remainingPath] stringByResolvingWildcardsInPath];
+					  stringByAppendingPathComponent:resolvedPathPart]
+					 stringByAppendingPathComponent:remainingPath] subStringByResolvingWildcardsInPath];
 		if (resolved != nil) {
 			return resolved;
 		}
 	}
 	return nil;
+}
+
+- (NSString *)stringByResolvingWildcardsInPath {
+	NSString *resolvedString = [self subStringByResolvingWildcardsInPath];
+	if (resolvedString == nil) {
+		return self;
+	}
+	return resolvedString;
 }
 
 - (NSString *)firstUnusedFilePath {
