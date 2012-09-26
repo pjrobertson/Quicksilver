@@ -714,13 +714,6 @@
 			remoteGlobalIDString = 8D1107260486CEB800E47090;
 			remoteInfo = Quicksilver;
 		};
-		4D002DA013114A10009040B7 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 29B97313FDCFA39411CA2CEA /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 8D1107260486CEB800E47090;
-			remoteInfo = Quicksilver;
-		};
 		4D002DB213114A33009040B7 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 29B97313FDCFA39411CA2CEA /* Project object */;
@@ -895,6 +888,20 @@
 			proxyType = 1;
 			remoteGlobalIDString = E1E5F9B107B1FD100044D6EF;
 			remoteInfo = "QuickStep Effects";
+		};
+		CDCB8F35161391E90091F3E1 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 29B97313FDCFA39411CA2CEA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E1E5F97107B1FCFC0044D6EF;
+			remoteInfo = "QuickStep Foundation";
+		};
+		CDCB8F37161391EA0091F3E1 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 29B97313FDCFA39411CA2CEA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E103F15F0647200700447FE0;
+			remoteInfo = "QuickStep Core";
 		};
 		E179ACF206482A0300083F3E /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -1400,6 +1407,7 @@
 		CD53FEB2151A0ACF006B734B /* PluginReporterText.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = PluginReporterText.html; sourceTree = "<group>"; };
 		CDA9D3DD1549D13B00607BE4 /* AlertCautionIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AlertCautionIcon.icns; sourceTree = "<group>"; };
 		CDC9C6C413DA2B6D0053B09C /* Clipboard.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = Clipboard.icns; sourceTree = "<group>"; };
+		CDCB8F391613920C0091F3E1 /* Finder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Finder.h; sourceTree = "<group>"; };
 		CDCC200E10A4C14B009C4EED /* QSMDPredicate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = QSMDPredicate.h; sourceTree = "<group>"; };
 		CDCC200F10A4C14B009C4EED /* QSMDPredicate.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = QSMDPredicate.m; sourceTree = "<group>"; };
 		CDD3096A160B860A00CD34EC /* countBadge1&2.tiff */ = {isa = PBXFileReference; lastKnownFileType = image.tiff; path = "countBadge1&2.tiff"; sourceTree = "<group>"; };
@@ -2025,6 +2033,7 @@
 				4D002CCB1311460B009040B7 /* QSFinderPlugIn_Prefix.pch */,
 				4D002CCC1311460B009040B7 /* QSFinderProxy.h */,
 				4D002CCD1311460B009040B7 /* QSFinderProxy.m */,
+				CDCB8F391613920C0091F3E1 /* Finder.h */,
 				423DA024132F7A2C005ED70F /* QSAction.name.strings */,
 				4D62E326147694D800362E9A /* QSAction.description.plist */,
 			);
@@ -3211,7 +3220,8 @@
 			buildRules = (
 			);
 			dependencies = (
-				4D002DA113114A10009040B7 /* PBXTargetDependency */,
+				CDCB8F38161391EA0091F3E1 /* PBXTargetDependency */,
+				CDCB8F36161391E90091F3E1 /* PBXTargetDependency */,
 			);
 			name = "Finder Module";
 			productName = "Finder Module";
@@ -4319,11 +4329,6 @@
 			target = 8D1107260486CEB800E47090 /* Quicksilver */;
 			targetProxy = 4D002D8D131149A8009040B7 /* PBXContainerItemProxy */;
 		};
-		4D002DA113114A10009040B7 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 8D1107260486CEB800E47090 /* Quicksilver */;
-			targetProxy = 4D002DA013114A10009040B7 /* PBXContainerItemProxy */;
-		};
 		4D002DB313114A33009040B7 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 8D1107260486CEB800E47090 /* Quicksilver */;
@@ -4448,6 +4453,16 @@
 			isa = PBXTargetDependency;
 			target = E1E5F9B107B1FD100044D6EF /* QuickStep Effects */;
 			targetProxy = 7FAF850E092EC7C700DD5295 /* PBXContainerItemProxy */;
+		};
+		CDCB8F36161391E90091F3E1 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E1E5F97107B1FCFC0044D6EF /* QuickStep Foundation */;
+			targetProxy = CDCB8F35161391E90091F3E1 /* PBXContainerItemProxy */;
+		};
+		CDCB8F38161391EA0091F3E1 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E103F15F0647200700447FE0 /* QuickStep Core */;
+			targetProxy = CDCB8F37161391EA0091F3E1 /* PBXContainerItemProxy */;
 		};
 		E179ACF306482A0300083F3E /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
