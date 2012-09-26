@@ -15,6 +15,7 @@
 #pragma mark Bundle ID
 
 #define kQSBundleID @"com.blacktree.Quicksilver"
+#define kFinderBundleID @"com.apple.finder"
 
 #pragma mark Actions
 

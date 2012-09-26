@@ -18,7 +18,7 @@ bool _LSCopyAllApplicationURLs(NSArray **array);
 
 - (NSString *)commentForFile:(NSString *)path {
 	if(path){
-		if ([self applicationIsRunning:@"com.apple.finder"]) {
+		if ([self applicationIsRunning:kFinderBundleID]) {
 			NSString *hfsPath;
 			NSAppleScript *script;
 			NSAppleEventDescriptor *aeDesc;
