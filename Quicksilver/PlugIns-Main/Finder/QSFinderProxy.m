@@ -12,6 +12,13 @@
 	return _sharedInstance;
 }
 
+-(id)init {
+    if (self = [super init]) {
+        finder = [[SBApplication applicationWithBundleIdentifier:kFinderBundleID] retain];
+    }
+    return self;
+}
+
 - (void)dealloc {
 	[self setFinderScript:nil];
 	[super dealloc];
@@ -33,33 +40,43 @@
 }
 
 - (NSArray *)selection {
-	NSDictionary *errorDict = nil;
-	NSAppleEventDescriptor *desc = [[self finderScript] executeSubroutine:@"get_selection" arguments:nil error:&errorDict];
-	if (errorDict) {
-        NSLog(@"Execute Error: %@", errorDict);
-        return nil;
-    }
-	NSMutableArray *files = [NSMutableArray arrayWithCapacity:[desc numberOfItems]];
-	NSInteger i;
-	for (i = 0; i<[desc numberOfItems]; i++)
-		[files addObject:[[desc descriptorAtIndex:i+1] stringValue]];
-	return files;
+    
+    SBElementArray *obj = [[finder selection] get];
+    return [self pathsFromSBObject:obj];
+
 }
 
+- (NSArray *)pathsFromSBObject:(SBElementArray *)sbobj {
+    NSArray *urls = [sbobj arrayByApplyingSelector:@selector(URL)];
+    
+    __block NSMutableArray *paths = [NSMutableArray arrayWithCapacity:[urls count]];
+    
+    [urls enumerateObjectsWithOptions:NSEnumerationConcurrent usingBlock:^(NSString *url, NSUInteger idx, BOOL *stop){
+        NSURL *fileURL = [NSURL URLWithString:url];
+        NSString *path = [fileURL path];
+        if (path)
+            [paths addObject:[fileURL path]];
+        
+    }];
+    return paths;
+}
 - (NSArray *)copyFiles:(NSArray *)files toFolder:(NSString *)destination {return [self moveFiles:files toFolder:destination shouldCopy:YES];}
 - (NSArray *)moveFiles:(NSArray *)files toFolder:(NSString *)destination {return [self moveFiles:files toFolder:destination shouldCopy:NO];}
 - (NSArray *)moveFiles:(NSArray *)files toFolder:(NSString *)destination shouldCopy:(BOOL)copy {
-	NSDictionary *errorDict = nil;
-
-	//NSLog(@"move %d", copy);
-	NSArray *arguments = [NSArray arrayWithObjects:files, destination, nil];
-	NSAppleEventDescriptor *desc = [[self finderScript] executeSubroutine:(copy?@"copy_items":@"move_items") arguments:[NSAppleEventDescriptor descriptorWithObject:arguments] error:&errorDict];
-	if (!errorDict) {
-		return [desc objectValue]; //Should be an array of strings
-	} else {
-		NSLog(@"Execute Error: %@", errorDict);
-		return nil;
-	}
+      
+//    objectAtLocation is useful for finding files from Finder. **Always** pass it an NSArray of file paths
+    FinderItem *sourceFiles = [[finder items] objectAtLocation:files];
+    FinderItem *destinationItem = [[finder items] objectAtLocation:[NSArray arrayWithObject:destination]];
+    SBObject *returns;
+    if (copy) {
+         returns =  [sourceFiles duplicateTo:destinationItem  replacing:YES routingSuppressed:NO exactCopy:NO];
+    } else {
+        returns = [sourceFiles moveTo:destinationItem replacing:YES positionedAt:nil routingSuppressed:YES];
+    }
+    if (returns != nil) {
+        
+    }
+    return nil;
 }
 
 - (NSArray *)getInfoForFiles:(NSArray *)files {

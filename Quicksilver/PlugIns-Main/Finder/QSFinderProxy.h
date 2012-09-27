@@ -2,13 +2,16 @@
 #import <Foundation/Foundation.h>
 #import <QSFoundation/QSFoundation.h>
 #import <QSCore/QSCore.h>
-
 #import "QSFSBrowserMediator.h"
+
+// Scripting Bridge
+#import "Finder.h"
 
 #define kFinderOpenTrashAction @"FinderOpenTrashAction"
 #define kFinderEmptyTrashAction @"FinderEmptyTrashAction"
 
 @interface QSFinderProxy : NSObject <QSFSBrowserMediator> {
+    FinderApplication *finder;
 NSAppleScript *finderScript;
 }
 + (id)sharedInstance;
