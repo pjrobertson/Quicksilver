@@ -142,8 +142,8 @@ typedef struct _QSObjectFlags {
 @end
 
 @interface QSObject (Icon)
-- (BOOL)loadIcon;
-- (BOOL)unloadIcon;
+- (void)loadIcon;
+- (void)unloadIcon;
 - (NSImage *)icon;
 - (void)setIcon:(NSImage *)newIcon;
 - (void)updateIcon:(NSImage *)newIcon;

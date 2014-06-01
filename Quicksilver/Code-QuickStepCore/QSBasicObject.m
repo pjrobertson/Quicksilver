@@ -25,8 +25,8 @@
 - (BOOL)enabled {return ![[QSLibrarian sharedInstance] itemIsOmitted:self];}
 - (void)setEnabled:(BOOL)flag {[[QSLibrarian sharedInstance] setItem:self isOmitted:!flag];}
 - (id)primaryObject {return nil;}
-- (BOOL)loadIcon {return YES;}
-- (BOOL)iconLoaded {return YES;}
+- (void)loadIcon {}
+- (BOOL)iconLoaded { return YES;}
 - (void)setBundle:(NSBundle *)aBundle {
     if(aBundle != nil && aBundle != bundle) {
         bundle = aBundle;
@@ -71,7 +71,9 @@
 }
 
 - (NSImage *)loadedIcon {
-	if (![self iconLoaded]) [self loadIcon];
+	if (![self iconLoaded]) {
+        [self loadIcon];
+    }
 	return [self icon];
 }
 - (void)becameSelected { return; }

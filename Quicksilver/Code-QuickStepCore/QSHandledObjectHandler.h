@@ -11,6 +11,3 @@
 
 @interface QSInternalObjectSource : QSObjectSource
 @end
-
-@interface QSHandledObjectHandler : NSObject
-@end

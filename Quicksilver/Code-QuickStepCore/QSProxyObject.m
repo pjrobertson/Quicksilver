@@ -67,7 +67,7 @@
     id provider = [self proxyProvider];        
     proxy = [provider resolveProxyObject:self];
     
-    if ([self isEqual:proxy]) return nil;
+    if (self == proxy) return nil;
     
     //NSLog(@"Proxy: %@", proxy);
     if (proxy) {
@@ -160,7 +160,7 @@
     return object;
 }
 
-- (BOOL)loadIcon
+- (void)loadIcon
 {
     NSString *namedIcon = [self objectForMeta:kQSObjectIconName];
     if (!namedIcon || [namedIcon isEqualToString:@"ProxyIcon"]) {
@@ -169,8 +169,8 @@
         [self setIcon:[resolved icon]];
         [self setIconLoaded:YES];
 	    [resolved loadIcon];
-        return YES;
+        return;
     }
-    return [super loadIcon];
+    [super loadIcon];
 }
 @end

@@ -21,7 +21,7 @@
 - (id)primaryObject;
 - (NSBundle*)bundle;
 - (void)setBundle:(NSBundle*)bundle;
-- (BOOL)loadIcon;
+- (void)loadIcon;
 - (BOOL)iconLoaded;
 @end
 

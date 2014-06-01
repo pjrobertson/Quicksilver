@@ -9,10 +9,12 @@ static NSTimeInterval globalLastAccess;
 BOOL QSObjectInitialized = NO;
 
 NSSize QSMaxIconSize;
+dispatch_queue_t icon_loader = NULL;
 
 @implementation QSObject
 + (void)initialize {
 	if (!QSObjectInitialized) {
+        icon_loader = dispatch_queue_create("Icon Loader", DISPATCH_QUEUE_SERIAL);
 		QSMaxIconSize = QSSizeMax;
 		NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
 		[nc addObserver:self selector:@selector(interfaceChanged) name:QSInterfaceChangedNotification object:nil];
@@ -32,10 +34,6 @@ NSSize QSMaxIconSize;
 
 + (void)purgeImagesAndChildrenOlderThan:(NSTimeInterval)interval {
 
-#ifdef DEBUG
-	NSUInteger imagecount = 0;
-	NSUInteger childcount = 0;
-#endif
  // NSString *thisKey = nil;
 
     @synchronized(iconLoadedSet) {
@@ -43,12 +41,7 @@ NSSize QSMaxIconSize;
             return obj->lastAccess && obj->lastAccess < (globalLastAccess - interval);
         }];
         for(QSObject *thisObject in s) {
-            if ([thisObject unloadIcon]) {
-                
-#ifdef DEBUG
-                imagecount++;
-#endif
-            }
+            [thisObject unloadIcon];
         }
     }
     
@@ -58,19 +51,9 @@ NSSize QSMaxIconSize;
     }];
         
         for (QSObject *thisObject in t) {
-            if ([thisObject unloadChildren]) {
-#ifdef DEBUG
-                childcount++;
-#endif
-            }
+            [thisObject unloadChildren];
         }
     }
-
-
-#ifdef DEBUG
-	if (DEBUG_MEMORY && (imagecount || childcount) )
-		NSLog(@"Released %lu images and %lu children (items before %f) ", (unsigned long)imagecount, (unsigned long)childcount, interval);
-#endif
 
 }
 
@@ -213,20 +196,27 @@ NSSize QSMaxIconSize;
 
 - (void)dealloc {
 	//NSLog(@"dealloc %x %@", self, [self name]);
-	[self unloadIcon];
+
+    [iconLoadedSet removeObject:self];
+	[childLoadedSet removeObject:self];
+
     [[NSNotificationCenter defaultCenter] removeObserver:self];
-	[self unloadChildren];
-	 data = nil;
-	 meta = nil;
-	 cache = nil;
-
-	 name = nil;
-	 label = nil;
-	 identifier = nil;
-	 icon = nil;
-	 primaryType = nil;
-	 primaryObject = nil;
-
+    
+	[self setAltChildren:nil];
+	flags.childrenLoaded = NO;
+	[self setChildrenLoadedDate:0];
+    data = nil;
+    meta = nil;
+    cache = nil;
+    
+    name = nil;
+    label = nil;
+    identifier = nil;
+    icon = nil;
+    flags.iconLoaded = NO;
+    primaryType = nil;
+    primaryObject = nil;
+    
 }
 
 // !!! Andre Berg 20091008: adding a gdbDataFormatter method which can be easily used 
@@ -789,12 +779,10 @@ NSSize QSMaxIconSize;
 - (BOOL)iconLoaded { return flags.iconLoaded;  }
 - (void)setIconLoaded:(BOOL)flag {
 	flags.iconLoaded = flag;
-    @synchronized(iconLoadedSet) {
-        if (flag) {
-            [iconLoadedSet addObject:self];
-        } else {
-            [iconLoadedSet removeObject:self];
-        }
+    if (flag) {
+        [iconLoadedSet addObject:self];
+    } else {
+        [iconLoadedSet removeObject:self];
     }
 }
 
@@ -882,56 +870,62 @@ NSSize QSMaxIconSize;
 @end
 
 @implementation QSObject (Icon)
-- (BOOL)loadIcon {
-  NSString *namedIcon = [self objectForMeta:kQSObjectIconName];
-	if ([self iconLoaded] && !namedIcon) {
-        return NO;
-	}
-	[self setIconLoaded:YES];
-    
-	lastAccess = [NSDate timeIntervalSinceReferenceDate];
-	globalLastAccess = lastAccess;
+- (void)loadIcon {
+    QSObject __weak *weakSelf = self;
 
-	if (namedIcon) {
-        NSImage *image = [QSResourceManager imageNamed:namedIcon];
-		if (image) {
-			[self setIcon:image];
-			return YES;
-		}
-	}
-
-	id handler = nil;
-	if (handler = [self handlerForSelector:@selector(loadIconForObject:)]) {
-        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
+    QSGCDQueueAsync(icon_loader, ^{
+        NSString *namedIcon = [weakSelf objectForMeta:kQSObjectIconName];
+        if ([weakSelf iconLoaded] && !namedIcon) {
+            return;
+        }
+        [weakSelf setIconLoaded:YES];
+        
+        lastAccess = [NSDate timeIntervalSinceReferenceDate];
+        globalLastAccess = lastAccess;
+        
+        if (namedIcon) {
+            NSImage *image = [QSResourceManager imageNamed:namedIcon];
+            if (image) {
+                [weakSelf setIcon:image];
+                return;
+            }
+        }
+        
+        id handler = nil;
+        if (handler = [weakSelf handlerForSelector:@selector(loadIconForObject:)]) {
             // loadIconForObject returns a BOOL, but we can't return it from here
             // nothing ever checks the return from loadIcon anyway
-            [handler loadIconForObject:self];
-        });
-        return YES;
-    }
-
-	//// if ([primaryType hasPrefix:@"QSCsontact"])
-	//	 return NO;
-    
-	if ([IMAGETYPES intersectsSet:[NSSet setWithArray:[data allKeys]]]) {
-		[self setIcon:[[NSImage alloc] initWithPasteboard:(NSPasteboard *)self]];
-	}
-    
-	if (![self icon]) {
-		[self setIcon:[QSResourceManager imageNamed:@"GenericQuestionMarkIcon"]];
-		return NO;
-	}
-    
-	return NO;
+            [handler loadIconForObject:weakSelf];
+            return;
+        }
+        
+        //// if ([primaryType hasPrefix:@"QSCsontact"])
+        //	 return NO;
+        
+        if ([IMAGETYPES intersectsSet:[NSSet setWithArray:[data allKeys]]]) {
+            [weakSelf setIcon:[[NSImage alloc] initWithPasteboard:(NSPasteboard *)weakSelf]];
+        }
+        
+        if (![weakSelf icon]) {
+            [weakSelf setIcon:[QSResourceManager imageNamed:@"GenericQuestionMarkIcon"]];
+        }
+            
+    });
 }
 
-- (BOOL)unloadIcon {
-	if (![self iconLoaded]) return NO;
-	if ([self retainsIcon]) return NO;
-    
-	[self setIcon:nil];
-	[self setIconLoaded:NO];
-	return YES;
+- (void)unloadIcon {
+    QSObject __weak *weakSelf = self;
+    QSGCDQueueAsync(icon_loader, ^{
+        if (![weakSelf iconLoaded]) {
+            return;
+        }
+        if ([weakSelf retainsIcon]) {
+            return;
+        }
+        
+        [weakSelf setIcon:nil];
+        [weakSelf setIconLoaded:NO];
+    });
 }
 
 - (NSImage *)icon {

@@ -57,7 +57,7 @@
 }
 + (id)objectsWithDictionaryArray:(NSArray *)dictionaryArray {
 	NSMutableArray *dictObjectArray = [NSMutableArray arrayWithCapacity:[dictionaryArray count]];
-	for (id loopItem in dictionaryArray) {
+	for (id __strong loopItem in dictionaryArray) {
 		@try {
             [dictObjectArray addObject:[self objectWithDictionary:loopItem]];
         }
