@@ -327,26 +327,28 @@ OSStatus appTerminated(EventHandlerCallRef nextHandler, EventRef theEvent, void 
 #pragma mark Process Notifications
 
 - (BOOL)handleProcessEvent:(NSEvent *)theEvent {
-	ProcessSerialNumber psn;
-	psn.highLongOfPSN = (UInt32)[theEvent data1];
-	psn.lowLongOfPSN = (UInt32)[theEvent data2];
-
-	NSDictionary *processInfo;
-
-    switch ([theEvent subtype]) {
-		case NSProcessDidLaunchSubType:
-			[self addProcessWithPSN:psn];
-			break;
-		case NSProcessDidTerminateSubType:
-			[self removeProcessWithPSN:psn];
-			break;
-		case NSFrontProcessSwitched:
-			processInfo = [self infoForPSN:psn];
-			[[NSNotificationCenter defaultCenter] postNotificationName:QSProcessMonitorFrontApplicationSwitched object: processInfo];
-			break;
-		default:
-	 break;
-	}
+	dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
+		ProcessSerialNumber psn;
+		psn.highLongOfPSN = (UInt32)[theEvent data1];
+		psn.lowLongOfPSN = (UInt32)[theEvent data2];
+		
+		NSDictionary *processInfo;
+		
+		switch ([theEvent subtype]) {
+			case NSProcessDidLaunchSubType:
+				[self addProcessWithPSN:psn];
+				break;
+			case NSProcessDidTerminateSubType:
+				[self removeProcessWithPSN:psn];
+				break;
+			case NSFrontProcessSwitched:
+				processInfo = [self infoForPSN:psn];
+				[[NSNotificationCenter defaultCenter] postNotificationName:QSProcessMonitorFrontApplicationSwitched object: processInfo];
+				break;
+			default:
+				break;
+		}
+	});
 	return YES;
 }
 
